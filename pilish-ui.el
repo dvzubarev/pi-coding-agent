@@ -1223,7 +1223,14 @@ removing the instructional header that would otherwise appear."
   (let ((completion-show-help nil))
     (completion-at-point)))
 
-(defvar pilish-input-mode-map
+(defvar pilish-input-mode-map (make-sparse-keymap)
+  "Keymap for Pilish input integrations.
+
+This map is layered over the selected input major mode.  It is empty by
+default so, for example, Org input buffers retain Org's bindings.  Users may
+add their own bindings here.")
+
+(defvar pilish--input-default-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "C-c C-c") #'pilish-send)
     (define-key map (kbd "TAB") #'pilish-complete)
@@ -1239,7 +1246,7 @@ removing the instructional header that would otherwise appear."
     (define-key map (kbd "C-c C-s") #'pilish-queue-steering)
     (define-key map (kbd "M-RET") #'pilish-queue-followup)
     map)
-  "Keymap for `pilish-input-mode'.")
+  "Default bindings for Pilish's built-in input mode.")
 
 ;;;; Session Directory Detection
 
@@ -1253,7 +1260,7 @@ Always returns an expanded absolute path; remote TRAMP home text is preserved."
    (cond
     ((derived-mode-p 'pilish-chat-mode)
      (pilish--chat-session-directory))
-    ((derived-mode-p 'pilish-input-mode)
+    ((pilish--input-buffer-p)
      (if (buffer-live-p pilish--chat-buffer)
          (with-current-buffer pilish--chat-buffer
            (pilish--chat-session-directory))
@@ -1491,11 +1498,18 @@ new live processes in interactive sessions."
 In input buffers, also store BUFFER in `other-window-scroll-buffer'
 so built-in other-window scrolling commands target the linked chat."
   (setq pilish--chat-buffer buffer)
-  (when (derived-mode-p 'pilish-input-mode)
+  (when (pilish--input-buffer-p)
     (setq-local other-window-scroll-buffer buffer)))
 
 (defvar-local pilish--input-buffer nil
   "Reference to the input buffer for this session.")
+
+(defvar-local pilish--input-buffer-p nil
+  "Non-nil when this buffer is a Pilish prompt-composition buffer.")
+
+(defun pilish--input-buffer-p ()
+  "Return non-nil when the current buffer is a Pilish input buffer."
+  pilish--input-buffer-p)
 
 (defvar pilish--activity-phase)
 
@@ -2151,7 +2165,7 @@ Works from either chat or input buffer."
 (defun pilish--get-input-buffer ()
   "Get the input buffer for the current session.
 Works from either chat or input buffer."
-  (if (derived-mode-p 'pilish-input-mode)
+  (if (pilish--input-buffer-p)
       (current-buffer)
     pilish--input-buffer))
 
@@ -3311,7 +3325,8 @@ the location is `input'.  Under `none', and in buffers of any other
 mode, no buffer owns it."
   (when (pcase pilish-header-line-location
           ('chat (derived-mode-p 'pilish-chat-mode))
-          ('input (derived-mode-p 'pilish-input-mode)))
+          ('input (or (pilish--input-buffer-p)
+                      (derived-mode-p 'pilish-input-mode))))
     '(:eval (pilish--header-line-string))))
 
 (defun pilish--apply-header-line-location ()
@@ -3319,8 +3334,8 @@ mode, no buffer owns it."
 `pilish-header-line-location' decides between chat and input
 buffers; buffers of any other mode are left untouched.  Owned
 header lines repaint immediately."
-  (when (or (derived-mode-p 'pilish-chat-mode)
-            (derived-mode-p 'pilish-input-mode))
+  (when (or (derived-mode-p 'pilish-chat-mode 'pilish-input-mode)
+            (pilish--input-buffer-p))
     (setq-local header-line-format (pilish--header-line-format))
     (force-mode-line-update)))
 

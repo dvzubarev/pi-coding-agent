@@ -338,6 +338,33 @@ This ensures all files get code fences for consistent display."
     (pilish-input-mode)
     (should-not buffer-read-only)))
 
+(ert-deftest pilish-test-org-is-the-input-buffer-major-mode ()
+  "Org input uses Org as the actual major mode without Pilish key conflicts."
+  (let ((pilish-input-major-mode 'org-mode)
+        (key (kbd "C-c C-z")))
+    (define-key pilish-input-mode-map key #'pilish-send)
+    (unwind-protect
+        (with-temp-buffer
+          (pilish-input-mode)
+          (should (eq major-mode 'org-mode))
+          (should (derived-mode-p 'org-mode))
+          (should (pilish--input-buffer-p))
+          (should-not (eq (key-binding (kbd "C-c C-c"))
+                          #'pilish-send))
+          (should (eq (key-binding key) #'pilish-send)))
+      (define-key pilish-input-mode-map key nil))))
+
+(ert-deftest pilish-test-org-input-strips-property-drawers-on-send ()
+  "Org property drawers are omitted from the prompt sent to Pi."
+  (let ((pilish-input-major-mode 'org-mode))
+    (with-temp-buffer
+      (pilish-input-mode)
+      (let ((text (pilish--preprocess-input-text
+                   "* Prompt\n:PROPERTIES:\n:ID: hidden\n:END:\nVisible")))
+        (should-not (string-match-p ":PROPERTIES:" text))
+        (should-not (string-match-p "hidden" text))
+        (should (string-match-p "Visible" text))))))
+
 ;;; Session Directory Detection
 
 (ert-deftest pilish-test-session-directory-uses-project-root ()

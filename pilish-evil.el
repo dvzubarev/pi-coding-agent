@@ -253,7 +253,7 @@ When APPEND is non-nil, move point to the end of the input buffer."
     (if-let* ((input-win (get-buffer-window input-buf)))
         (select-window input-win)
       (pilish--display-buffers chat-buf input-buf))
-    (when (derived-mode-p 'pilish-input-mode)
+    (when (pilish--input-buffer-p)
       (when append
         (goto-char (point-max)))
       (pilish-evil--enter-input-state))))
@@ -298,6 +298,10 @@ options `pilish-evil-chat-state',
                           pilish-evil-browse-state)
   (evil-set-initial-state 'pilish-tree-browser-mode
                           pilish-evil-browse-state)
+  ;; Org is the actual major mode when selected, so it cannot use Evil's
+  ;; major-mode initial-state mechanism.  Its setup hook enters this state.
+  (add-hook 'pilish-org-input-mode-hook
+            #'pilish-evil--enter-input-state)
   (evil-define-key* 'motion pilish-chat-mode-map
     "n" #'pilish-next-message
     "p" #'pilish-previous-message

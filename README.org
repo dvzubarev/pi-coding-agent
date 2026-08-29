@@ -1070,6 +1070,10 @@ Less common tuning knobs:
 ;; New input buffers use plain text instead of Markdown highlighting:
 ;; (setopt pilish-input-markdown-highlighting nil)
 
+;; Compose prompts in Org, with Org as the input buffer's actual major mode.
+;; Property drawers are omitted from the prompt sent to Pi:
+;; (setopt pilish-input-major-mode 'org-mode)
+
 ;; Show more tool output before it collapses, counted in visual lines:
 ;; (setopt pilish-tool-preview-lines 20)
 ;; (setopt pilish-bash-preview-lines 10)

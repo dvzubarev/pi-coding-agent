@@ -374,7 +374,7 @@ ollama-status:
 
 check-parens:
 	@echo "=== Check Parens ==="
-	@OUTPUT=$$($(BATCH) --eval '(condition-case err (dolist (f (list "scripts/pilish-build.el" "scripts/install-deps.el" "scripts/install-ts-grammars.el" "pilish-core.el" "pilish-jsonl.el" "pilish-grammars.el" "pilish-ui.el" "pilish-answer.el" "pilish-table.el" "pilish-render.el" "pilish-snapshot.el" "pilish-input.el" "pilish-menu.el" "pilish-browse.el" "pilish-evil.el" "pilish.el")) (with-current-buffer (find-file-noselect f) (check-parens) (message "%s OK" f))) (user-error (message "FAIL: %s" (error-message-string err)) (kill-emacs 1)))' 2>&1); \
+	@OUTPUT=$$($(BATCH) --eval '(condition-case err (dolist (f (list "scripts/pilish-build.el" "scripts/install-deps.el" "scripts/install-ts-grammars.el" "pilish-core.el" "pilish-jsonl.el" "pilish-grammars.el" "pilish-ui.el" "pilish-answer.el" "pilish-table.el" "pilish-render.el" "pilish-snapshot.el" "pilish-input.el" "pilish-org.el" "pilish-menu.el" "pilish-browse.el" "pilish-evil.el" "pilish.el")) (with-current-buffer (find-file-noselect f) (check-parens) (message "%s OK" f))) (user-error (message "FAIL: %s" (error-message-string err)) (kill-emacs 1)))' 2>&1); \
 	echo "$$OUTPUT" | grep -E "OK$$|FAIL:"; \
 	echo "$$OUTPUT" | grep -q "FAIL:" && exit 1 || true
 
@@ -386,7 +386,7 @@ compile: .deps-stamp
 		--eval "(package-initialize)" \
 		$(LOCAL_LOAD_PATH) \
 		--eval "(setq byte-compile-error-on-warn t)" \
-		-f batch-byte-compile scripts/pilish-build.el scripts/install-deps.el scripts/install-ts-grammars.el pilish-core.el pilish-jsonl.el pilish-grammars.el pilish-ui.el pilish-answer.el pilish-table.el pilish-render.el pilish-snapshot.el pilish-input.el pilish-menu.el pilish-browse.el pilish-evil.el pilish.el
+		-f batch-byte-compile scripts/pilish-build.el scripts/install-deps.el scripts/install-ts-grammars.el pilish-core.el pilish-jsonl.el pilish-grammars.el pilish-ui.el pilish-answer.el pilish-table.el pilish-render.el pilish-snapshot.el pilish-input.el pilish-org.el pilish-menu.el pilish-browse.el pilish-evil.el pilish.el
 
 lint: lint-checkdoc lint-package
 
@@ -407,6 +407,7 @@ lint-checkdoc:
 		--eval "(checkdoc-file \"pilish-render.el\")" \
 		--eval "(checkdoc-file \"pilish-snapshot.el\")" \
 		--eval "(checkdoc-file \"pilish-input.el\")" \
+		--eval "(checkdoc-file \"pilish-org.el\")" \
 		--eval "(checkdoc-file \"pilish-menu.el\")" \
 		--eval "(checkdoc-file \"pilish-browse.el\")" \
 		--eval "(checkdoc-file \"pilish-evil.el\")" \
@@ -426,7 +427,7 @@ lint-package:
 		            (package-install 'package-lint)))" \
 		--eval "(require 'package-lint)" \
 		--eval "(setq package-lint-main-file \"pilish.el\")" \
-		-f package-lint-batch-and-exit pilish.el pilish-ui.el pilish-answer.el pilish-table.el pilish-render.el pilish-snapshot.el pilish-input.el pilish-menu.el pilish-browse.el pilish-core.el pilish-jsonl.el pilish-grammars.el
+		-f package-lint-batch-and-exit pilish.el pilish-ui.el pilish-answer.el pilish-table.el pilish-render.el pilish-snapshot.el pilish-input.el pilish-org.el pilish-menu.el pilish-browse.el pilish-core.el pilish-jsonl.el pilish-grammars.el
 
 check: compile lint test
 

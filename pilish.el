@@ -42,8 +42,9 @@
 ;;     installed and in PATH on the host where Pi runs
 ;;   - tree-sitter grammars for markdown and markdown-inline
 ;;
-;; Pilish uses `md-ts-mode` for its own chat and input buffers;
-;; loading it does not change global Markdown file associations.
+;; Pilish uses `md-ts-mode` for its chat and default input buffers; set
+;; `pilish-input-major-mode` to `org-mode` for Org prompts.  Loading it does
+;; not change global Markdown file associations.
 ;;
 ;; Usage:
 ;;   M-x pilish                    Start or focus session in current project
@@ -121,6 +122,7 @@
 
 (require 'pilish-menu)
 (require 'pilish-input)
+(require 'pilish-org)
 (require 'pilish-browse)
 (require 'pilish-snapshot)
 
@@ -298,7 +300,8 @@ frame, keeps layout unchanged and focuses the input window."
    (list (when current-prefix-arg
            (read-string "Session name: "))))
   (let (chat-buf input-buf)
-    (if (and (derived-mode-p 'pilish-chat-mode 'pilish-input-mode)
+    (if (and (or (derived-mode-p 'pilish-chat-mode)
+                 (pilish--input-buffer-p))
              (not session))
         ;; Already in pi buffer with no new session requested - use current session
         (setq chat-buf (pilish--get-chat-buffer)
@@ -338,7 +341,8 @@ If pi windows are visible in the current frame, hide them.
 If hidden there but a session exists, show them.
 If no session exists, signal an error."
   (interactive)
-  (let* ((chat-buf (if (derived-mode-p 'pilish-chat-mode 'pilish-input-mode)
+  (let* ((chat-buf (if (or (derived-mode-p 'pilish-chat-mode)
+                           (pilish--input-buffer-p))
                        (pilish--get-chat-buffer)
                      (car (pilish-project-buffers))))
          (input-buf (and chat-buf

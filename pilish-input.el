@@ -49,6 +49,10 @@
 (require 'pilish-render)
 (require 'ring)
 
+(declare-function pilish-org--input-mode-p "pilish-org")
+(declare-function pilish-org--setup-input-buffer "pilish-org")
+(declare-function pilish-org--preprocess-input "pilish-org")
+
 ;;;; Input History (comint/eshell style)
 
 (defvar pilish--input-ring-size 100
@@ -263,24 +267,27 @@ For backward search: go to current input (nil index)."
 
 (define-derived-mode pilish-input-mode text-mode "Pi-Input"
   "Major mode for composing pi prompts.
-Uses tree-sitter markdown highlighting by default while preserving raw
-markup visibility, mode identity, and keybindings.  Set
+Uses tree-sitter Markdown highlighting by default while preserving raw markup
+visibility.  Set `pilish-input-major-mode' to `org-mode' to use Org as the
+input buffer's actual major mode, or set
 `pilish-input-markdown-highlighting' to nil for plain text."
   :group 'pilish
-  (when pilish-input-markdown-highlighting
-    (let ((derived-name mode-name))
-      ;; `md-ts-mode' is a full major mode: it clobbers the identity
-      ;; `define-derived-mode' installed before running this body, so
-      ;; capture and restore it rather than duplicating "Pi-Input".
-      (md-ts-mode)
-      (setq major-mode 'pilish-input-mode
-            mode-name derived-name)
-      (use-local-map pilish-input-mode-map)
-      ;; Users see exactly what they type — never hide markup in input.
-      (setq-local md-ts-hide-markup nil)
-      (md-ts--set-hide-markup nil)))
-  ;; The input window hosts the session header line only when
-  ;; `pilish-header-line-location' says so; chat buffers own it by default.
+  (if (and (fboundp 'pilish-org--input-mode-p)
+           (pilish-org--input-mode-p))
+      (pilish-org--setup-input-buffer)
+    (when pilish-input-markdown-highlighting
+      (let ((derived-name mode-name))
+        ;; `md-ts-mode' clobbers the identity installed by the derived mode.
+        (md-ts-mode)
+        (setq major-mode 'pilish-input-mode
+              mode-name derived-name)
+        ;; Users see exactly what they type — never hide markup in input.
+        (setq-local md-ts-hide-markup nil)
+        (md-ts--set-hide-markup nil)))
+    (use-local-map
+     (make-composed-keymap pilish-input-mode-map
+                           pilish--input-default-mode-map)))
+  (setq-local pilish--input-buffer-p t)
   (pilish--apply-header-line-location)
   ;; Reset inherited completions (text-mode adds ispell, etc.) — our
   ;; input buffer should only offer slash commands, file refs, and paths.
@@ -426,12 +433,19 @@ replaces the previous draft image."
 
 ;;;; Sending Prompts
 
-(defun pilish--accept-input-text (text &optional prompt-image)
+(defun pilish--preprocess-input-text (text)
+  "Return TEXT after any active input-mode preprocessing."
+  (if (and (bound-and-true-p pilish-org-input-mode)
+           (fboundp 'pilish-org--preprocess-input))
+      (pilish-org--preprocess-input text)
+    text))
+
+(defun pilish--accept-input-text (text &optional prompt-image history-text)
   "Accept TEXT from input buffer state, consuming optional PROMPT-IMAGE.
-Adds only TEXT to history, resets history navigation, and clears input.
-With `pilish-jump-to-end-on-submit', also return the chat's windows in
-the selected frame to its end."
-  (pilish--history-add text)
+Adds HISTORY-TEXT, or TEXT when it is nil, to history; resets history
+navigation; and clears input.  With `pilish-jump-to-end-on-submit', also
+return the chat's windows in the selected frame to its end."
+  (pilish--history-add (or history-text text))
   (setq pilish--input-ring-index nil
         pilish--input-saved nil)
   (when prompt-image
@@ -444,9 +458,10 @@ the selected frame to its end."
         (goto-char (point-max))
         (recenter -1)))))
 
-(defun pilish--queue-followup-text (chat-buf text)
-  "Accept TEXT and enqueue it as a follow-up in CHAT-BUF."
-  (pilish--accept-input-text text)
+(defun pilish--queue-followup-text (chat-buf text &optional history-text)
+  "Accept TEXT and enqueue it as a follow-up in CHAT-BUF.
+HISTORY-TEXT, when non-nil, is retained in the local input history instead."
+  (pilish--accept-input-text text nil history-text)
   (with-current-buffer chat-buf
     (pilish--push-followup text)))
 
@@ -459,7 +474,8 @@ An attached image is accepted only with a direct, ordinary, idle prompt.
 All built-in slash commands are handled locally; other slash commands are
 sent to pi."
   (interactive)
-  (let* ((text (string-trim (buffer-string)))
+  (let* ((input-text (string-trim (buffer-string)))
+         (text (pilish--preprocess-input-text input-text))
          (chat-buf (pilish--get-chat-buffer))
          (prompt-image (pilish--get-prompt-image))
          (transitioning (and chat-buf
@@ -490,16 +506,16 @@ sent to pi."
       (when (= (buffer-size) 0)
         (pilish--maybe-hide-input-window)))
      (busy
-      (pilish--queue-followup-text chat-buf text)
+      (pilish--queue-followup-text chat-buf text input-text)
       (pilish--maybe-hide-input-window)
       (message "Pi: Message queued (will send when Pi is ready)"))
      (prompt-image
-      (pilish--accept-input-text text prompt-image)
+      (pilish--accept-input-text text prompt-image input-text)
       (pilish--maybe-hide-input-window)
       (with-current-buffer chat-buf
         (pilish--prepare-and-send text nil prompt-image)))
      (t
-      (pilish--accept-input-text text)
+      (pilish--accept-input-text text nil input-text)
       (pilish--maybe-hide-input-window)
       (with-current-buffer chat-buf
         (pilish--prepare-and-send text))))))
@@ -755,7 +771,8 @@ During compaction or while awaiting run settlement, steering text is queued
 as a local follow-up.  It is sent after the surrounding run and any local
 command reservation finish.  Steering refuses a draft image."
   (interactive)
-  (let ((text (string-trim (buffer-string))))
+  (let* ((input-text (string-trim (buffer-string)))
+         (text (pilish--preprocess-input-text input-text)))
     (if (pilish--get-prompt-image)
         (message "Pi: Cannot steer with an attached image")
       (unless (string-empty-p text)
@@ -771,11 +788,11 @@ command reservation finish.  Steering refuses a draft image."
                ((or (eq status 'compacting)
                     (and (memq status '(idle sending))
                          (not (pilish--session-steerable-p chat-buf))))
-                (pilish--queue-followup-text chat-buf text)
+                (pilish--queue-followup-text chat-buf text input-text)
                 (message "Pi: Steering queued (will send when Pi is ready)"))
                ((memq status '(sending streaming))
                 (when (pilish--send-steer-message text)
-                  (pilish--accept-input-text text)))
+                  (pilish--accept-input-text text nil input-text)))
                (t
                 (message "Pi: Cannot steer while session status is %s"
                          status))))))))))

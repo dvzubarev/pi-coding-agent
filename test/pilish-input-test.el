@@ -6296,14 +6296,14 @@ display-agent-end must finalize the pending overlay with error face."
 (ert-deftest pilish-test-input-mode-md-ts-preserves-mode-identity ()
   "Markdown highlighting preserves the derived mode's identity.
 `md-ts-mode' is a full major mode, so `pilish-input-mode' must restore
-the identity `define-derived-mode' installed: mode name, `major-mode',
-the local keymap, and the tree-sitter font-lock."
+its mode name and `major-mode', composed input bindings, and tree-sitter
+font-lock."
   (with-temp-buffer
     (let ((pilish-input-markdown-highlighting t))
       (pilish-input-mode)
       (should (eq major-mode 'pilish-input-mode))
       (should (string= mode-name "Pi-Input"))
-      (should (eq (current-local-map) pilish-input-mode-map))
+      (should (eq (key-binding (kbd "C-c C-c")) #'pilish-send))
       ;; md-ts font-lock is engaged, not merely absent.
       (insert "some **bold** text")
       (font-lock-ensure)

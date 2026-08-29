@@ -1732,7 +1732,7 @@ Also kills the linked chat buffer (which handles process cleanup).
 Note: This runs from `kill-buffer-hook', which executes AFTER the kill
 decision is made.  For proper cancellation support, use `pilish-quit'
 which asks upfront before any buffers are touched."
-  (when (derived-mode-p 'pilish-input-mode)
+  (when (pilish--input-buffer-p)
     (when (and pilish--chat-buffer (buffer-live-p pilish--chat-buffer))
       (let* ((chat-buf pilish--chat-buffer)
              (proc (buffer-local-value 'pilish--process chat-buf)))
