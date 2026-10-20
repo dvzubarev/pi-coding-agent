@@ -30,7 +30,7 @@ SELECTOR ?=
 # Example: make test VERBOSE=1
 VERBOSE ?=
 
-.PHONY: test test-unit test-core test-ui test-render test-arguments test-table test-input test-menu test-browse test-jsonl test-snapshot test-build test-answer
+.PHONY: test test-unit test-core test-ui test-render test-arguments test-table test-input test-menu test-browse test-jsonl test-snapshot test-build test-answer test-org-view
 .PHONY: test-integration test-integration-fake test-integration-real test-integration-ci test-integration-ci-real test-gui test-gui-ci test-all
 .PHONY: bench bench-batch bench-reload-resume bench-reload-resume-batch bench-reload-resume-smoke
 .PHONY: bench-tool-update bench-tool-update-batch bench-tool-update-smoke
@@ -53,6 +53,7 @@ help:
 	@echo "  make test-jsonl        JSONL reader/tree/projection tests only"
 	@echo "  make test-snapshot     Static saved subagent snapshot tests only"
 	@echo "  make test-build       Build/dependency helper tests only"
+	@echo "  make test-org-view    Optional Org viewer tests (PRISMA_DIR, TS_GRAMMAR_DIR)"
 	@echo "  make test-unit        Compile + all unit tests"
 	@echo "  make test-integration Shared integration tests (fake first, then real; local target starts Ollama for the real lane)"
 	@echo "  make test-integration-fake Shared integration tests against fake backend only"
@@ -114,6 +115,16 @@ SHELL = bash
 export SELECTOR
 ERT_RUN = --eval '(let ((selector (getenv "SELECTOR"))) (if (and selector (> (length selector) 0)) (progn (require (quote ert)) (unless (ert-select-tests selector t) (error "SELECTOR matched no tests: %s" selector)) (ert-run-tests-batch-and-exit selector)) (ert-run-tests-batch-and-exit t)))'
 GUI_SELECTOR_ARG = $(if $(SELECTOR),$(SELECTOR),)
+
+# Optional prototype: intentionally excluded from the normal dependency graph.
+PRISMA_DIR ?=
+TS_GRAMMAR_DIR ?= $(HOME)/.emacs.d/tree-sitter
+
+test-org-view:
+	@$(BATCH) -L test $(if $(PRISMA_DIR),-L "$(PRISMA_DIR)",) \
+		--eval '(setq load-prefer-newer t)' \
+		--eval '(add-to-list (quote treesit-extra-load-path) "$(TS_GRAMMAR_DIR)")' \
+		-l pilish-org-view-test $(ERT_RUN)
 
 test: .deps-stamp
 	@echo "=== Unit Tests ==="

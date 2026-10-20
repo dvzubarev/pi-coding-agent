@@ -1120,6 +1120,13 @@ You can also inspect the whole customization group with:
 M-x customize-group RET pilish RET
 #+end_src
 
+** Experimental Org session viewer
+
+An optional offline viewer opens existing Pi JSONL sessions as read-only,
+real Org buffers, with branch selection and Markdown conversion through a
+pinned Prisma checkout.  It does not change the live chat renderer.
+See [[file:ORG-VIEWER.org][setup, commands, limitations, and tests]].
+
 ** Evil integration
 
 Optional Evil keybindings ship in =pilish-evil.el=, modeled on

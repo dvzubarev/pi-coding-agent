@@ -21,6 +21,30 @@ Pilish communicates with the Pi CLI through JSON-over-stdio RPC.
 - Loading Pilish must not make `md-ts-mode` claim unrelated Markdown buffers.
 - Protocol settlement, owner-scoped rendering, cold-tool retention, and saved-conversation identity have local contracts in their owning modules and tests. Read those contracts instead of inferring behavior from event names, tool names, or output text.
 
+Optional offline Org viewer (not loaded by `pilish.el`):
+
+```
+pilish-org-view.el -> jsonl, org-markdown, org-tools, org-metadata, org
+pilish-org-metadata.el -> jsonl
+pilish-org-tools.el -> org-markdown
+pilish-org-markdown.el -> prisma-md (pinned external checkout), org
+```
+
+The adapter reuses Prisma model/inline/table internals without global advice.
+Its local block traversal and renderer preserve nested lists and protect Org
+block boundaries. Tool results are grouped with preceding calls on the selected
+branch; an extensible presentation registry supports bash/read/write/edit and
+code-navigation tools without executing tools or opening project files.
+Native STARTUP/VISIBILITY settings hide drawers and noisy sections in both
+viewers and saved snapshots; events, system messages, and usage are opt-in. Semantic tags
+and PI_KIND/tool properties support native sparse trees, with prose tags only
+on user/response sections (never assistant envelopes). Graph metadata counts
+all canonical JSONL children, and thinking levels replay only the selected path.
+See `ORG-VIEWER.org`; `ORG-LIVE-RENDERER-NOTES.org` records prototype knowledge
+and handoff constraints for a future live renderer (not implemented). Run its optional tests with
+`make test-org-view PRISMA_DIR=/path/to/prisma.el TS_GRAMMAR_DIR=/path/to/grammars`.
+The ordinary compile/test targets intentionally do not require Prisma.
+
 ## Workflow
 
 1. Choose the owning module and the narrowest existing test. Add regressions to that suite rather than creating a parallel test layout.
