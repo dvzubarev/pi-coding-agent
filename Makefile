@@ -30,7 +30,7 @@ SELECTOR ?=
 # Example: make test VERBOSE=1
 VERBOSE ?=
 
-.PHONY: test test-unit test-core test-ui test-render test-arguments test-table test-input test-menu test-browse test-jsonl test-snapshot test-build test-answer test-org-view
+.PHONY: test test-unit test-core test-ui test-render test-arguments test-table test-input test-menu test-browse test-jsonl test-snapshot test-build test-answer test-org-view test-org-live
 .PHONY: test-integration test-integration-fake test-integration-real test-integration-ci test-integration-ci-real test-gui test-gui-ci test-all
 .PHONY: bench bench-batch bench-reload-resume bench-reload-resume-batch bench-reload-resume-smoke
 .PHONY: bench-tool-update bench-tool-update-batch bench-tool-update-smoke
@@ -54,6 +54,7 @@ help:
 	@echo "  make test-snapshot     Static saved subagent snapshot tests only"
 	@echo "  make test-build       Build/dependency helper tests only"
 	@echo "  make test-org-view    Optional Org viewer tests (PRISMA_DIR, TS_GRAMMAR_DIR)"
+	@echo "  make test-org-live    Optional live Org companion tests (same prerequisites)"
 	@echo "  make test-unit        Compile + all unit tests"
 	@echo "  make test-integration Shared integration tests (fake first, then real; local target starts Ollama for the real lane)"
 	@echo "  make test-integration-fake Shared integration tests against fake backend only"
@@ -125,6 +126,14 @@ test-org-view:
 		--eval '(setq load-prefer-newer t)' \
 		--eval '(add-to-list (quote treesit-extra-load-path) "$(TS_GRAMMAR_DIR)")' \
 		-l pilish-org-view-test $(ERT_RUN)
+
+test-org-live: .deps-stamp
+	@$(BATCH) -L test $(if $(PRISMA_DIR),-L "$(PRISMA_DIR)",) \
+		--eval '(setq load-prefer-newer t)' \
+		--eval '(require (quote package))' --eval '(package-initialize)' \
+		$(LOCAL_LOAD_PATH) \
+		--eval '(add-to-list (quote treesit-extra-load-path) "$(TS_GRAMMAR_DIR)")' \
+		-l pilish-org-live-test $(ERT_RUN)
 
 test: .deps-stamp
 	@echo "=== Unit Tests ==="

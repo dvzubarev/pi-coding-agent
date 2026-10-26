@@ -677,24 +677,43 @@ from dead processes are unavailable."
   (when (and (processp process) (process-live-p process))
     (process-get process 'pilish-queue-snapshot)))
 
+(defvar pilish-event-observer-functions nil
+  "Passive observers called with (PROCESS EVENT) after normal event handling.
+Observers must not mutate EVENT or drive the frontend state machine.
+Each observer is error-isolated; consumers must check session ownership.")
+
+(defvar pilish-exit-observer-functions nil
+  "Passive observers called with (PROCESS RESPONSE) after process cleanup.
+Each observer is error-isolated, as with `pilish-event-observer-functions'.")
+
+(defun pilish--notify-observers (functions process record)
+  "Call each of FUNCTIONS with PROCESS and RECORD, isolating errors."
+  (dolist (function (copy-sequence functions))
+    (condition-case err
+        (funcall function process record)
+      (error (message "Pilish observer failed: %s" (error-message-string err))))))
+
 (defun pilish--handle-event (proc event)
-  "Handle an EVENT from pi PROC.
-Calls only the handler registered for this specific process."
+  "Handle an EVENT from pi PROC, then notify passive observers.
+Calls only the display handler registered for this specific process."
   ;; Observe before display registration or adoption, including reload candidates.
   (when (equal (plist-get event :type) "queue_update")
     (process-put proc 'pilish-queue-snapshot event))
-  (let ((registered (eq proc (get-process (process-name proc)))))
-    (unless (run-hook-wrapped
-             'pilish-process-event-functions
-             (lambda (function)
-               (or (pilish--call-process-hook function proc event)
-                   (and registered
-                        (not (eq proc (get-process (process-name proc))))))))
-      ;; A hook may disconnect the process without consuming the event.
-      (when (or (not registered)
-                (eq proc (get-process (process-name proc))))
-        (when-let* ((handler (process-get proc 'pilish-display-handler)))
-          (funcall handler event))))))
+  ;; Passive projections observe even consumed events or display failures.
+  (unwind-protect
+      (let ((registered (eq proc (get-process (process-name proc)))))
+        (unless (run-hook-wrapped
+                 'pilish-process-event-functions
+                 (lambda (function)
+                   (or (pilish--call-process-hook function proc event)
+                       (and registered
+                            (not (eq proc (get-process (process-name proc))))))))
+          ;; A hook may disconnect the process without consuming the event.
+          (when (or (not registered)
+                    (eq proc (get-process (process-name proc))))
+            (when-let* ((handler (process-get proc 'pilish-display-handler)))
+              (funcall handler event)))))
+    (pilish--notify-observers pilish-event-observer-functions proc event)))
 
 (defconst pilish--process-stderr-max-chars 4000
   "Maximum number of stderr characters to keep in process exit excerpts.")
@@ -771,7 +790,9 @@ containing EVENT, then clears this process's pending request tables."
              nil))
           (when-let* ((handler (process-get proc 'pilish-exit-handler)))
             (funcall handler error-response)))
-      (pilish--cleanup-process-stderr-buffer proc))))
+      (pilish--cleanup-process-stderr-buffer proc)
+      (pilish--notify-observers
+       pilish-exit-observer-functions proc error-response))))
 
 (defvar pilish-executable)  ; forward decl — core.el cannot require ui.el
 (defvar pilish-project-trust-policy) ; forward decl — defined in ui.el

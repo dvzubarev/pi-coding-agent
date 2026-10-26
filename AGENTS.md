@@ -28,6 +28,8 @@ pilish-org-view.el -> jsonl, org-markdown, org-tools, org-metadata, org
 pilish-org-metadata.el -> jsonl
 pilish-org-tools.el -> org-markdown
 pilish-org-markdown.el -> prisma-md (pinned external checkout), org
+pilish-org-live.el -> ui, org-live-buffer
+pilish-org-live-buffer.el -> org-view
 ```
 
 The adapter reuses Prisma model/inline/table internals without global advice.
@@ -40,9 +42,14 @@ viewers and saved snapshots; events, system messages, and usage are opt-in. Sema
 and PI_KIND/tool properties support native sparse trees, with prose tags only
 on user/response sections (never assistant envelopes). Graph metadata counts
 all canonical JSONL children, and thinking levels replay only the selected path.
-See `ORG-VIEWER.org`; `ORG-LIVE-RENDERER-NOTES.org` records prototype knowledge
-and handoff constraints for a future live renderer (not implemented). Run its optional tests with
-`make test-org-view PRISMA_DIR=/path/to/prisma.el TS_GRAMMAR_DIR=/path/to/grammars`.
+See `ORG-VIEWER.org`; `ORG-LIVE-RENDERER-NOTES.org` records the historical
+prototype handoff. `ORG-LIVE.org` documents the optional live companion:
+idle-only raw-history attachment, throttled dirty-block body updates, final
+message/tool-result reconciliation, guarded passive observers, and explicit idle
+refresh for persisted IDs/graph metadata. It does not replace Pilish interaction,
+retain persistent parser buffers, or interpret arbitrary tool partial results.
+Run the optional `test-org-view` and `test-org-live` targets with
+`PRISMA_DIR=/path/to/prisma.el TS_GRAMMAR_DIR=/path/to/grammars`.
 The ordinary compile/test targets intentionally do not require Prisma.
 
 ## Workflow

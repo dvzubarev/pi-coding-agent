@@ -1809,8 +1809,9 @@ Return (RPC-COMMAND FOLLOWUP-QUEUE INPUT-LEFT HIDDEN), with RPC mocked."
 
 (ert-deftest pilish-test-queue-followup-ignores-steer-option ()
   "\\`M-RET' queues a follow-up even when sending steers."
-  (should (eq (keymap-lookup pilish-input-mode-map "M-RET")
-              #'pilish-queue-followup))
+  (with-temp-buffer
+    (pilish-input-mode)
+    (should (eq (key-binding (kbd "M-RET")) #'pilish-queue-followup)))
   (should-not (get 'pilish-queue-followup 'byte-obsolete-info))
   (let ((pilish-send-while-busy 'steer))
     (pcase-let ((`(,sent ,queue ,input ,hidden)

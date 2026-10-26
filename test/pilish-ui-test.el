@@ -354,6 +354,17 @@ This ensures all files get code fences for consistent display."
           (should (eq (key-binding key) #'pilish-send)))
       (define-key pilish-input-mode-map key nil))))
 
+(ert-deftest pilish-test-org-input-header-line-location ()
+  "Org input honors the shared session header placement."
+  (let ((pilish-input-major-mode 'org-mode)
+        (pilish-header-line-location 'input))
+    (with-temp-buffer
+      (pilish-input-mode)
+      (should (equal header-line-format '(:eval (pilish--header-line-string))))
+      (let ((pilish-header-line-location 'chat))
+        (pilish--apply-header-line-location)
+        (should-not header-line-format)))))
+
 (ert-deftest pilish-test-org-input-strips-property-drawers-on-send ()
   "Org property drawers are omitted from the prompt sent to Pi."
   (let ((pilish-input-major-mode 'org-mode))
